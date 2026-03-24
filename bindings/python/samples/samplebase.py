@@ -19,6 +19,7 @@ class SampleBase(object):
         self.parser.add_argument("-b", "--led-brightness", action="store", help="Sets brightness level. Default: 100. Range: 1..100", default=100, type=int)
         self.parser.add_argument("-m", "--led-gpio-mapping", help="Hardware Mapping: regular, adafruit-hat, adafruit-hat-pwm" , choices=['regular', 'adafruit-hat', 'adafruit-hat-pwm'], type=str)
         self.parser.add_argument("--led-limit-refresh", action="store", help="Limit refresh rate to this frequency in Hz. Useful to keep a constant refresh rate on loaded system. 0=no limit. Default: 0", default=0, type=int)
+        self.parser.add_argument("--led-no-busy-waiting", action="store_true", help="Don't use busy waiting when limiting refresh rate.")
         self.parser.add_argument("--led-scan-mode", action="store", help="Progressive or interlaced scan. 0 Progressive, 1 Interlaced (default)", default=1, choices=range(2), type=int)
         self.parser.add_argument("--led-pwm-dither-bits", action="store", help="Time dithering of lower bits.  Default: 0", default=0, type=int)
         self.parser.add_argument("--led-pwm-lsb-nanoseconds", action="store", help="Base time-unit for the on-time in the lowest significant bit in nanoseconds. Default: 130", default=130, type=int)
@@ -27,9 +28,10 @@ class SampleBase(object):
         self.parser.add_argument("--led-no-hardware-pulse", action="store", help="Don't use hardware pin-pulse generation")
         self.parser.add_argument("--led-rgb-sequence", action="store", help="Switch if your matrix has led colors swapped. Default: RGB", default="RGB", type=str)
         self.parser.add_argument("--led-pixel-mapper", action="store", help="Apply pixel mappers. e.g \"Rotate:90\"", default="", type=str)
-        self.parser.add_argument("--led-row-addr-type", action="store", help="0 = default; 1=AB-addressed panels; 2=row direct; 3=ABC-addressed panels; 4 = ABC Shift + DE direct", default=0, type=int, choices=[0,1,2,3,4])
+        self.parser.add_argument("--led-row-addr-type", action="store", help="0 = default; 1 = AB-addressed panels; 2 = direct row select; 3 = ABC-addressed panels; 4 = ABC Shift + DE direct; 5 = shift-register row select", default=0, type=int, choices=[0,1,2,3,4,5])
+        self.parser.add_argument("--led-spwm-row-addr-type", action="store", help="SPWM-only row select. 0 = direct A-E row flow; 1 = shift-register blank-clock row-select", default=0, type=int, choices=[0,1])
         self.parser.add_argument("--led-multiplexing", action="store", help="Multiplexing type: 0=direct; 1=strip; 2=checker; 3=spiral; 4=ZStripe; 5=ZnMirrorZStripe; 6=coreman; 7=Kaler2Scan; 8=ZStripeUneven... (Default: 0)", default=0, type=int)
-        self.parser.add_argument("--led-panel-type", action="store", help="Needed to initialize special panels. Supported: 'FM6126A'", default="", type=str)
+        self.parser.add_argument("--led-panel-type", action="store", help="Needed to initialize special panels. Supported: 'FM6126A', 'FM6127', 'FM6373', 'FM6363'", default="", type=str)
         self.parser.add_argument("--led-no-drop-privs", dest="drop_privileges", help="Don't drop privileges from 'root' after initializing the hardware.", action='store_false')
         self.parser.set_defaults(drop_privileges=True)
 
@@ -50,20 +52,23 @@ class SampleBase(object):
         options.cols = self.args.led_cols
         options.chain_length = self.args.led_chain
         options.parallel = self.args.led_parallel
+        options.scan_mode = self.args.led_scan_mode
         options.row_address_type = self.args.led_row_addr_type
+        options.spwm_row_address_type = self.args.led_spwm_row_addr_type
         options.multiplexing = self.args.led_multiplexing
         options.pwm_bits = self.args.led_pwm_bits
+        options.pwm_dither_bits = self.args.led_pwm_dither_bits
         options.brightness = self.args.led_brightness
         options.pwm_lsb_nanoseconds = self.args.led_pwm_lsb_nanoseconds
+        options.limit_refresh_rate_hz = self.args.led_limit_refresh
         options.led_rgb_sequence = self.args.led_rgb_sequence
         options.pixel_mapper_config = self.args.led_pixel_mapper
         options.panel_type = self.args.led_panel_type
-        options.pwm_dither_bits = self.args.led_pwm_dither_bits
-        options.limit_refresh_rate_hz = self.args.led_limit_refresh
-
 
         if self.args.led_show_refresh:
           options.show_refresh_rate = 1
+        if self.args.led_no_busy_waiting:
+          options.disable_busy_waiting = True
 
         if self.args.led_slowdown_gpio != None:
             options.gpio_slowdown = self.args.led_slowdown_gpio

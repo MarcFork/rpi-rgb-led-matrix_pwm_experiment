@@ -39,6 +39,8 @@ set(RGBMATRIX_SOURCES
     ${RGBMATRIX_SOURCE_DIR}/multiplex-mappers.cc
     ${RGBMATRIX_SOURCE_DIR}/options-initialize.cc
     ${RGBMATRIX_SOURCE_DIR}/pixel-mapper.cc
+    ${RGBMATRIX_SOURCE_DIR}/spwm-helpers.cc
+    ${RGBMATRIX_SOURCE_DIR}/spwm-panel-config.cc
     ${RGBMATRIX_SOURCE_DIR}/thread.cc
 )
 cmake_print_variables(RGBMATRIX_SOURCES)

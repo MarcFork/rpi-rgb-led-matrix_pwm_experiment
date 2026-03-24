@@ -117,6 +117,11 @@ struct RGBLedMatrixOptions {
    */
   int row_address_type;  /* Corresponding flag: --led-row-addr-type */
 
+  /* SPWM-only row-address override. 0 keeps the direct A-E SPWM row flow;
+   * 1 selects the shift-register blank-clock SPWM row-select path.
+   */
+  int spwm_row_address_type;  /* Corresponding flag: --led-spwm-row-addr-type */
+
   /*  Type of multiplexing. 0 = direct, 1 = stripe, 2 = checker (typical 1:8)
    */
   int multiplexing;

@@ -154,6 +154,10 @@ cdef class RGBMatrixOptions:
         def __get__(self): return self.__options.row_address_type
         def __set__(self, uint8_t value): self.__options.row_address_type = value
 
+    property spwm_row_address_type:
+        def __get__(self): return self.__options.spwm_row_address_type
+        def __set__(self, uint8_t value): self.__options.spwm_row_address_type = value
+
     property disable_hardware_pulsing:
         def __get__(self): return self.__options.disable_hardware_pulsing
         def __set__(self, value): self.__options.disable_hardware_pulsing = value
@@ -191,6 +195,10 @@ cdef class RGBMatrixOptions:
     property limit_refresh_rate_hz:
         def __get__(self): return self.__options.limit_refresh_rate_hz
         def __set__(self, value): self.__options.limit_refresh_rate_hz = value
+
+    property disable_busy_waiting:
+        def __get__(self): return self.__options.disable_busy_waiting
+        def __set__(self, value): self.__options.disable_busy_waiting = value
 
 
     # RuntimeOptions properties

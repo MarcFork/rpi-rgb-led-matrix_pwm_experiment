@@ -119,6 +119,11 @@ public:
     // typically some 64x64 panels
     int row_address_type;  // Flag --led-row-addr-type
 
+    // SPWM panels can override the row-address handling without affecting the
+    // normal PWM/non-SPWM row setter selection. 0 keeps the direct A-E SPWM
+    // path; 1 selects the shift-register blank-clock SPWM path.
+    int spwm_row_address_type;  // Flag --led-spwm-row-addr-type
+
     // Type of multiplexing. 0 = direct, 1 = stripe, 2 = checker,...
     // Flag: --led-multiplexing
     int multiplexing;

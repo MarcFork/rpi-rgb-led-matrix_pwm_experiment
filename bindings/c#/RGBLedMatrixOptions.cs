@@ -76,6 +76,13 @@ public struct RGBLedMatrixOptions
     public int RowAddressType = 0;
 
     /// <summary>
+    /// SPWM-only row-address override. 0 keeps direct A-E row addressing for
+    /// SPWM panels, while 1 selects the shift-register blank-clock row-select
+    /// path used by DP32020A-style receivers.
+    /// </summary>
+    public int SpwmRowAddressType = 0;
+
+    /// <summary>
     /// Type of multiplexing.
     /// </summary>
     public Multiplexing Multiplexing = Multiplexing.Direct;

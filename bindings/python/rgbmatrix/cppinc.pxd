@@ -55,12 +55,12 @@ cdef extern from "led-matrix.h" namespace "rgb_matrix::RGBMatrix":
         int parallel
         int pwm_bits
         int pwm_lsb_nanoseconds
+        int pwm_dither_bits
         int brightness
         int scan_mode
         int row_address_type
+        int spwm_row_address_type
         int multiplexing
-        int pwm_dither_bits
-        int limit_refresh_rate_hz
 
         bool disable_hardware_pulsing
         bool show_refresh_rate
@@ -69,6 +69,8 @@ cdef extern from "led-matrix.h" namespace "rgb_matrix::RGBMatrix":
         const char *led_rgb_sequence
         const char *pixel_mapper_config
         const char *panel_type
+        int limit_refresh_rate_hz
+        bool disable_busy_waiting
 
 cdef extern from "graphics.h" namespace "rgb_matrix":
     cdef struct Color:

@@ -68,10 +68,25 @@ Please do refer to --led-multiplexing=<0..17> mentioned below and try all values
 These should be labelled as "special" in the table above. They are not supported by this
 lib, as it only supports non PWM panels (until someone contributes PWM support).
 
-PWM/E-PWM/S-PWM Panels
+PWM / E-PWM / S-PWM Panels
 ----------------------
-Newer PWM panels are not currently supported by this lib, but support would really be appreciated.
-- https://github.com/hzeller/rpi-rgb-led-matrix/issues/466 is the master bug tracking PWM efforts
+SPWM panels currently supported by this tree:
+
+- FM6373 + DP32019B direct row selection: \
+  `--led-panel-type=fm6373 --led-spwm-row-addr-type=0`
+<br>
+
+- FM6363 + DP32020A shift-register row selection: \
+  `--led-panel-type=fm6363 --led-spwm-row-addr-type=1`
+
+<br>
+
+[SPWM Tuning Guide](./spwm.md)
+
+SPWM panel discussion and resources - https://github.com/hzeller/rpi-rgb-led-matrix/issues/1866
+
+SPWM First discussion - https://github.com/hzeller/rpi-rgb-led-matrix/issues/466
+
 
 Raspberry Pi up to 4 supported
 ------------------------------
@@ -356,6 +371,7 @@ two chained panels, so then you'd use
 
 ```
 --led-row-addr-type=<0..5>: 0 = default; 1 = AB-addressed panels; 2 = direct row select; 3 = ABC-addressed panels; 4 = ABC Shift + DE direct, 5 = ABC method similar to 3, but faster on some panels (needs less of a slowdown) (Default: 0).
+--led-spwm-row-addr-type=<0..1>: SPWM row select. 0 = direct A-E row flow; 1 = shift-register blank-clock row-select (Default: 0).
 ```
 
 This option is useful for certain 64x64 or 32x16 panels. For 64x64 panels,

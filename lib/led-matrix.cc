@@ -33,6 +33,7 @@
 #include "thread.h"
 #include "framebuffer-internal.h"
 #include "multiplex-mappers-internal.h"
+#include "spwm-helpers.h"
 
 // Leave this in here for a while. Setting things from old defines.
 #if defined(ADAFRUIT_RGBMATRIX_HAT)
@@ -44,6 +45,38 @@
 #endif
 
 namespace rgb_matrix {
+namespace {
+
+uint64_t GetMonotonicNanos() {
+  struct timespec ts;
+#ifdef CLOCK_MONOTONIC_RAW
+  clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
+#else
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+#endif
+  return (uint64_t) ts.tv_sec * 1000000000ull + (uint64_t) ts.tv_nsec;
+}
+
+void WaitUntilNanos(uint64_t deadline_ns, bool allow_busy_waiting) {
+  for (;;) {
+    const uint64_t now_ns = GetMonotonicNanos();
+    if (now_ns >= deadline_ns) return;
+
+    const uint64_t remaining_ns = deadline_ns - now_ns;
+    if (!allow_busy_waiting && remaining_ns > 200000) {
+      // Sleep most of the remaining time, then busy-spin the tail so the
+      // next frame starts close to the requested phase.
+      const long sleep_us = static_cast<long>((remaining_ns - 50000) / 1000);
+      if (sleep_us > 0) {
+        SleepMicroseconds(sleep_us);
+        continue;
+      }
+    }
+  }
+}
+
+}  // namespace
+
 // Implementation details of RGBmatrix.
 class RGBMatrix::Impl {
   class UpdateThread;
@@ -124,12 +157,17 @@ public:
                int limit_refresh_hz, bool allow_busy_waiting)
     : io_(io), show_refresh_(show_refresh),
       target_frame_usec_(limit_refresh_hz < 1 ? 0 : 1e6/limit_refresh_hz),
+      target_frame_nsec_(limit_refresh_hz < 1
+                         ? 0
+                         : 1000000000ull / (uint64_t) limit_refresh_hz),
+      spwm_phase_lock_enabled_(limit_refresh_hz > 0 && spwm_is_enabled()),
       allow_busy_waiting_(allow_busy_waiting),
       running_(true),
       current_frame_(initial_frame), next_frame_(NULL),
       requested_frame_multiple_(1) {
     pthread_cond_init(&frame_done_, NULL);
     pthread_cond_init(&input_change_, NULL);
+    spwm_reset_frame_phase_lock();
     switch (pwm_dither_bits) {
     case 0:
       start_bit_[0] = 0; start_bit_[1] = 0;
@@ -164,7 +202,12 @@ public:
     bool max_measure_enabled = false;
 
     while (running()) {
+      const uint64_t start_time_ns = GetMonotonicNanos();
       const uint32_t start_time_us = GetMicrosecondCounter();
+
+      if (spwm_phase_lock_enabled_) {
+        spwm_prepare_frame_phase_lock();
+      }
 
       current_frame_->framebuffer()
         ->DumpToMatrix(io_, start_bit_[low_bit_sequence % 4]);
@@ -198,14 +241,21 @@ public:
       ++frame_count;
       ++low_bit_sequence;
 
-      if (target_frame_usec_) {
-        if (allow_busy_waiting_) {
-          while ((GetMicrosecondCounter() - start_time_us) < target_frame_usec_) {
-            // busy wait. We have our dedicated core, so ok to burn cycles.
+      if (target_frame_nsec_) {
+        if (spwm_phase_lock_enabled_) {
+          const uint64_t wait_until_ns =
+              spwm_resolve_frame_phase_lock_deadline(start_time_ns,
+                                                     target_frame_nsec_);
+          WaitUntilNanos(wait_until_ns, allow_busy_waiting_);
+        } else if (target_frame_usec_) {
+          if (allow_busy_waiting_) {
+            while ((GetMicrosecondCounter() - start_time_us) < target_frame_usec_) {
+              // busy wait. We have our dedicated core, so ok to burn cycles.
+            }
+          } else {
+            long spent_us = GetMicrosecondCounter() - start_time_us;
+            SleepMicroseconds(target_frame_usec_ - spent_us);
           }
-        } else {
-          long spent_us = GetMicrosecondCounter() - start_time_us;
-          SleepMicroseconds(target_frame_usec_ - spent_us);
         }
       }
 
@@ -250,6 +300,8 @@ private:
   GPIO *const io_;
   const bool show_refresh_;
   const uint32_t target_frame_usec_;
+  const uint64_t target_frame_nsec_;
+  const bool spwm_phase_lock_enabled_;
   const bool allow_busy_waiting_;
   uint32_t start_bit_[4];
 
@@ -297,6 +349,7 @@ RGBMatrix::Options::Options() :
 #endif
 
   row_address_type(0),
+  spwm_row_address_type(0),
   multiplexing(0),
 
 #ifdef DISABLE_HARDWARE_PULSES
@@ -351,6 +404,7 @@ static void PrintOptions(const RGBMatrix::Options &o) {
   P_INT(brightness);
   P_INT(scan_mode);
   P_INT(row_address_type);
+  P_INT(spwm_row_address_type);
   P_INT(multiplexing);
   P_BOOL(disable_hardware_pulsing);
   P_BOOL(show_refresh_rate);
@@ -466,9 +520,11 @@ void RGBMatrix::Impl::SetGPIO(GPIO *io, bool start_thread) {
   if (io != NULL && io_ == NULL) {
     io_ = io;
     Framebuffer::InitGPIO(io_, params_.rows, params_.parallel,
+                          params_.panel_type,
                           !params_.disable_hardware_pulsing,
                           params_.pwm_lsb_nanoseconds, params_.pwm_dither_bits,
-                          params_.row_address_type);
+                          params_.row_address_type,
+                          params_.spwm_row_address_type);
     Framebuffer::InitializePanels(io_, params_.panel_type,
                                   params_.cols * params_.chain_length);
   }
