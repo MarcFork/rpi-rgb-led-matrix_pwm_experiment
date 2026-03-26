@@ -27,6 +27,13 @@ struct SPWM_Upload_Geometry {
   int clocks_per_block;
 };
 
+// Panel-tied OE timing style. FM6373 keeps OE as one continuous burst, while
+// FM6363 pulses OE on each clock and shares the startup burst with upload.
+enum SPWM_OE_Style {
+  SPWM_OE_STYLE_FM6373 = 0,
+  SPWM_OE_STYLE_FM6363,
+};
+
 struct SPWM_Panel_Settings {
   int default_rows;               // Default panel row count for this profile.
   int default_columns;            // Default panel column count for this profile.
@@ -38,6 +45,7 @@ struct SPWM_Panel_Settings {
   int first_oe_clk_length;        // SPWM_FIRST_OE_CLK_LENGTH
   int oe_clk_length;              // SPWM_OE_CLK_LENGTH
   int oe_clk_look_behind;         // SPWM_OE_CLK_LOOK_BEHIND
+  SPWM_OE_Style oe_style;         // Panel-tied OE timing profile.
   
   bool auto_tune_oe_gaps;         // SPWM_AUTO_TUNE_OE_GAPS
   int auto_tune_frames;           // SPWM_AUTO_TUNE_FRAMES

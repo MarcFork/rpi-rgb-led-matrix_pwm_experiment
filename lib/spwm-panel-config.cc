@@ -117,6 +117,10 @@ static const SPWM_Panel_Settings SPWM_FM6373_SETTINGS = []() {
   spwm_settings.oe_after_upload_clk_count = 112;
   spwm_settings.oe_clk_look_behind = 16;
   spwm_settings.oe_clk_length = 4;
+  spwm_settings.oe_style = SPWM_OE_STYLE_FM6373;
+  spwm_settings.shiftreg_row_select_a_pulse_clk_count = 2;
+  spwm_settings.shiftreg_row_select_a_pulse_start_clk = 0;
+  spwm_settings.shiftreg_row_select_a_pulse_centered = true;
   return spwm_settings;
 }();
 static const uint16_t SPWM_FM6373_REGISTER1_WORD = 0x00AA;
@@ -204,8 +208,9 @@ SPWM_Config spwm_create_fm6373_config(const SPWM_Panel_Settings &spwm_settings,
 // -------------------------------------------------------------------------------------------------
 // FM6363 profile definition.
 // FM6363 uses the DP32020A-style shift-register receiver, so register uploads
-// carry longer, per-register LAT timing and the scan engine later steps rows
-// from the blank clocks instead of direct A-E writes.
+// carry longer, per-register LAT timing. Its default OE profile also expects
+// the FM6363/DP32020A blank-clock-aligned timing even if row select is
+// overridden to direct A-E writes later.
 // -------------------------------------------------------------------------------------------------
 
 static const size_t SPWM_FM6363_REGISTER_COUNT = 5;
@@ -244,6 +249,7 @@ static const SPWM_Panel_Settings SPWM_FM6363_SETTINGS = []() {
   spwm_settings.oe_after_upload_clk_count = 500;
   spwm_settings.oe_clk_look_behind = 0;
   spwm_settings.oe_clk_length = 74;
+  spwm_settings.oe_style = SPWM_OE_STYLE_FM6363;
   spwm_settings.shiftreg_row_select_a_pulse_clk_count = 2;
   spwm_settings.shiftreg_row_select_a_pulse_start_clk = 0;
   spwm_settings.shiftreg_row_select_a_pulse_centered = true;
