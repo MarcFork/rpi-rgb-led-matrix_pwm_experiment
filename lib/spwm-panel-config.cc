@@ -53,6 +53,29 @@ SPWM_Register_Timing spwm_make_register_timing(
   return spwm_timing;
 }
 
+// Build the shared SPWM settings baseline. Panel profiles can then override
+// only the values that differ. Default based on FM6373
+SPWM_Panel_Settings spwm_make_default_panel_settings() {
+  SPWM_Panel_Settings spwm_settings = {};
+  spwm_settings.default_rows = 64;
+  spwm_settings.default_columns = 128;
+  spwm_settings.upload_channels_per_chip = 16;
+  spwm_settings.upload_word_bits = 16;
+  spwm_settings.upload_chip_count = 0;  // derive from columns / channels_per_chip
+  spwm_settings.auto_tune_oe_gaps = true;
+  spwm_settings.auto_tune_frames = 20;
+  spwm_settings.auto_tune_max_step_clks = 50;
+  spwm_settings.first_oe_clk_length = 12;
+  spwm_settings.end_of_frame_extra_row_cycles = 20;
+  spwm_settings.frame_end_sleep_us = 300;
+  spwm_settings.oe_during_upload_clk_count = 112;
+  spwm_settings.oe_after_upload_clk_count = 112;
+  spwm_settings.oe_clk_look_behind = 16;
+  spwm_settings.oe_clk_length = 4;
+  spwm_settings.oe_style = SPWM_OE_STYLE_FM6373;
+  return spwm_settings;
+}
+
 // Resolve how many cascaded driver chips a register block has to cover for the
 // active panel width.
 size_t spwm_resolve_register_repeat_count(
@@ -101,26 +124,8 @@ static const SPWM_Register_Timing SPWM_FM6373_REGISTER_TIMINGS[] = {
 // Use named field assignments instead of positional aggregate initialization so
 // panel-setting edits stay readable in the C++11 build as this struct evolves.
 static const SPWM_Panel_Settings SPWM_FM6373_SETTINGS = []() {
-  SPWM_Panel_Settings spwm_settings = {};
-  spwm_settings.default_rows = 64;
-  spwm_settings.default_columns = 128;
-  spwm_settings.upload_channels_per_chip = 16;
-  spwm_settings.upload_word_bits = 16;
-  spwm_settings.upload_chip_count = 0;  // derive from columns / channels_per_chip
-  spwm_settings.auto_tune_oe_gaps = true;
-  spwm_settings.auto_tune_frames = 10;
-  spwm_settings.auto_tune_max_step_clks = 50;
-  spwm_settings.first_oe_clk_length = 12;
-  spwm_settings.end_of_frame_extra_row_cycles = 20;
-  spwm_settings.frame_end_sleep_us = 300;
-  spwm_settings.oe_during_upload_clk_count = 112;
-  spwm_settings.oe_after_upload_clk_count = 112;
-  spwm_settings.oe_clk_look_behind = 16;
-  spwm_settings.oe_clk_length = 4;
-  spwm_settings.oe_style = SPWM_OE_STYLE_FM6373;
-  spwm_settings.shiftreg_row_select_a_pulse_clk_count = 2;
-  spwm_settings.shiftreg_row_select_a_pulse_start_clk = 0;
-  spwm_settings.shiftreg_row_select_a_pulse_centered = true;
+  // Default panel setting based on FM6373
+  SPWM_Panel_Settings spwm_settings = spwm_make_default_panel_settings();
   return spwm_settings;
 }();
 static const uint16_t SPWM_FM6373_REGISTER1_WORD = 0x00AA;
@@ -233,26 +238,18 @@ static const SPWM_Register_Timing SPWM_FM6363_REGISTER_TIMINGS[] = {
 };
 
 static const SPWM_Panel_Settings SPWM_FM6363_SETTINGS = []() {
-  SPWM_Panel_Settings spwm_settings = {};
-  spwm_settings.default_rows = 64;
-  spwm_settings.default_columns = 128;
-  spwm_settings.upload_channels_per_chip = 16;
-  spwm_settings.upload_word_bits = 16;
-  spwm_settings.upload_chip_count = 0;  // derive from columns / channels_per_chip
+  SPWM_Panel_Settings spwm_settings = spwm_make_default_panel_settings();
   spwm_settings.auto_tune_oe_gaps = false;
   spwm_settings.auto_tune_frames = 0;
   spwm_settings.auto_tune_max_step_clks = 0;
   spwm_settings.first_oe_clk_length = 78;
-  spwm_settings.end_of_frame_extra_row_cycles = 2;
+  spwm_settings.end_of_frame_extra_row_cycles = 3;
   spwm_settings.frame_end_sleep_us = 100;
   spwm_settings.oe_during_upload_clk_count = 500;
   spwm_settings.oe_after_upload_clk_count = 500;
   spwm_settings.oe_clk_look_behind = 0;
   spwm_settings.oe_clk_length = 74;
   spwm_settings.oe_style = SPWM_OE_STYLE_FM6363;
-  spwm_settings.shiftreg_row_select_a_pulse_clk_count = 2;
-  spwm_settings.shiftreg_row_select_a_pulse_start_clk = 0;
-  spwm_settings.shiftreg_row_select_a_pulse_centered = true;
   return spwm_settings;
 }();
 static const uint16_t SPWM_FM6363_REGISTER1_WORD = 0x1fb0;

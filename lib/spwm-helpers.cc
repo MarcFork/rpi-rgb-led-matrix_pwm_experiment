@@ -328,6 +328,22 @@ void spwm_apply_bool_env_override(const char *spwm_env_name,
   }
 }
 
+// Apply the shared defaults for the selected SPWM row-address transport.
+void spwm_apply_row_address_type_defaults(int spwm_row_address_type,
+                                          SPWM_Panel_Settings *spwm_settings) {
+  if (spwm_settings == nullptr) return;
+
+  switch (spwm_row_address_type) {
+    case SPWM_ROW_ADDRESS_TYPE_1_SHIFTREG_BLANK_CLOCK:
+      spwm_settings->shiftreg_row_select_a_pulse_clk_count = 2;
+      spwm_settings->shiftreg_row_select_a_pulse_start_clk = 0;
+      spwm_settings->shiftreg_row_select_a_pulse_centered = true;
+      break;
+    default:
+      break;
+  }
+}
+
 // -------------------------
 // Environment override layer
 // -------------------------
@@ -1673,20 +1689,39 @@ gpio_bits_t spwm_get_framebuffer_rgb_mask(const HardwareMapping &h) {
 // FM6363-style OE uses the whole non-OE window as setup time. This stays tied
 // to the panel profile even when row-select transport is overridden.
 SPWM_OE_Style spwm_get_active_oe_style() {
-  return spwm_get_panel_settings().oe_style;
+  const SPWM_Panel_Settings &spwm_settings = spwm_get_panel_settings();
+  return spwm_settings.oe_style;
 }
 
 bool spwm_oe_style_uses_row_before_oe(SPWM_OE_Style spwm_oe_style) {
-  return spwm_oe_style == SPWM_OE_STYLE_FM6363;
+  switch (spwm_oe_style) {
+    case SPWM_OE_STYLE_FM6363:
+      return true;
+    case SPWM_OE_STYLE_FM6373:
+    default:
+      return false;
+  }
 }
 
 bool spwm_oe_style_shares_initial_oe_with_upload(
     SPWM_OE_Style spwm_oe_style) {
-  return spwm_oe_style == SPWM_OE_STYLE_FM6363;
+  switch (spwm_oe_style) {
+    case SPWM_OE_STYLE_FM6363:
+      return true;
+    case SPWM_OE_STYLE_FM6373:
+    default:
+      return false;
+  }
 }
 
 bool spwm_oe_style_pulse_each_clock(SPWM_OE_Style spwm_oe_style) {
-  return spwm_oe_style == SPWM_OE_STYLE_FM6363;
+  switch (spwm_oe_style) {
+    case SPWM_OE_STYLE_FM6363:
+      return true;
+    case SPWM_OE_STYLE_FM6373:
+    default:
+      return false;
+  }
 }
 
 int spwm_resolve_scan_setup_clks(SPWM_OE_Style spwm_oe_style,
@@ -1782,9 +1817,11 @@ bool spwm_is_panel_type(const char *spwm_panel_type) {
 
 // Select the active SPWM runtime profile and report whether the panel should
 // route framebuffer refresh through the SPWM path.
-bool spwm_initialize_panel_type(const char *spwm_panel_type, int spwm_columns) {
+bool spwm_initialize_panel_type(const char *spwm_panel_type, int spwm_columns,
+                                int spwm_row_address_type) {
   spwm_set_enabled(false);
-  spwm_configure_panel_type(spwm_panel_type, spwm_columns);
+  spwm_configure_panel_type(spwm_panel_type, spwm_columns,
+                            spwm_row_address_type);
 
   if (spwm_panel_type == nullptr || *spwm_panel_type == '\0') return false;
   if (!spwm_is_panel_type(spwm_panel_type)) return false;
@@ -1793,9 +1830,11 @@ bool spwm_initialize_panel_type(const char *spwm_panel_type, int spwm_columns) {
   return true;
 }
 
-// Load the chosen panel profile, apply environment overrides, and rebuild the
-// runtime register layout for the active panel width.
-void spwm_configure_panel_type(const char *spwm_panel_type, int spwm_columns) {
+// Load the chosen panel profile, apply row-select transport defaults plus any
+// environment overrides, and rebuild the runtime register layout for the
+// active panel width.
+void spwm_configure_panel_type(const char *spwm_panel_type, int spwm_columns,
+                               int spwm_row_address_type) {
   SPWM_Runtime_State &spwm_runtime_state = spwm_get_runtime_state();
   SPWM_Auto_Tune_Control &spwm_auto_tune_control =
       spwm_get_auto_tune_control_storage();
@@ -1807,6 +1846,8 @@ void spwm_configure_panel_type(const char *spwm_panel_type, int spwm_columns) {
   spwm_runtime_state.panel_settings =
       spwm_profile != nullptr ? spwm_profile->settings
                               : spwm_default_profile.settings;
+  spwm_apply_row_address_type_defaults(spwm_row_address_type,
+                                       &spwm_runtime_state.panel_settings);
   spwm_apply_panel_env_overrides(&spwm_runtime_state.panel_settings);
   spwm_auto_tune_control.loaded = false;
 

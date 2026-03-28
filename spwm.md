@@ -81,6 +81,7 @@ use led-show-refresh to monitor the framerate. You can keep increasing SPWM_END_
 [SPWM_AUTO_TUNE_FRAMES](#spwm_auto_tune_frames50) \
 [SPWM_AUTO_TUNE_MAX_STEP_CLKS](#spwm_auto_tune_max_step_clks50) \
 [SPWM_SHIFT_REG_ROW_SELECT_A_PULSE_CLK_COUNT](#spwm_shift_reg_row_select_a_pulse_clk_count2) \
+[SPWM_SHIFT_REG_ROW_SELECT_A_PULSE_START_CLK](#spwm_shift_reg_row_select_a_pulse_start_clk0) \
 [SPWM_SHIFT_REG_ROW_SELECT_A_PULSE_CENTERED](#spwm_shift_reg_row_select_a_pulse_centered1) \
 
 ---
@@ -146,6 +147,10 @@ Maximum CLKS to adjust by from auto tune.
 Only applies to --spwm-row-addr-type=1 \
 Channel A pulse CLK length for Shift Reg multiplexer \
 <img alt="Image" src="./img/spwm/spwm_shift_reg_row_select_a_pulse_clk_count.png" />
+
+#### SPWM_SHIFT_REG_ROW_SELECT_A_PULSE_START_CLK=0
+Only applies to --spwm-row-addr-type=1 \
+Start CLK offset for the Channel A pulse when centering is disabled. \
 
 #### SPWM_SHIFT_REG_ROW_SELECT_A_PULSE_CENTERED=1
 Only applies to --spwm-row-addr-type=1 \

@@ -27,11 +27,16 @@ struct SPWM_Upload_Geometry {
   int clocks_per_block;
 };
 
-// Panel-tied OE timing style. FM6373 keeps OE as one continuous burst, while
-// FM6363 pulses OE on each clock and shares the startup burst with upload.
+// Panel-tied OE timing style.
 enum SPWM_OE_Style {
   SPWM_OE_STYLE_FM6373 = 0,
-  SPWM_OE_STYLE_FM6363,
+  SPWM_OE_STYLE_FM6363 = 1,
+};
+
+// SPWM-only row-address transport selected by --led-spwm-row-addr-type.
+enum SPWM_Row_Address_Type {
+  SPWM_ROW_ADDRESS_TYPE_0_DIRECT_AE = 0,
+  SPWM_ROW_ADDRESS_TYPE_1_SHIFTREG_BLANK_CLOCK = 1,
 };
 
 struct SPWM_Panel_Settings {
@@ -57,7 +62,9 @@ struct SPWM_Panel_Settings {
   int oe_after_upload_clk_count;  // SPWM_OE_AFTER_UPLOAD_CLK_COUNT
   
   
-  // Shift-register row-select Channel A pulse controls.
+  // Shift-register blank-clock row-select Channel A pulse controls.
+  // These defaults are attached to --led-spwm-row-addr-type=1 and can still
+  // be overridden through the environment.
   int shiftreg_row_select_a_pulse_clk_count;  // SPWM_SHIFT_REG_ROW_SELECT_A_PULSE_CLK_COUNT
   bool shiftreg_row_select_a_pulse_centered;  // SPWM_SHIFT_REG_ROW_SELECT_A_PULSE_CENTERED
   int shiftreg_row_select_a_pulse_start_clk;  // SPWM_SHIFT_REG_ROW_SELECT_A_PULSE_START_CLK
@@ -153,11 +160,14 @@ bool spwm_is_panel_type(const char *panel_type);
 
 // Select the active SPWM profile for `panel_type` and enable SPWM refresh when
 // the panel type is handled by the SPWM path.
-bool spwm_initialize_panel_type(const char *panel_type, int columns);
+bool spwm_initialize_panel_type(const char *panel_type, int columns,
+                                int spwm_row_address_type);
 
-// Load the selected panel profile into the runtime state, rebuild any
-// width-dependent register layout, and apply environment overrides.
-void spwm_configure_panel_type(const char *panel_type, int columns);
+// Load the selected panel profile into the runtime state, apply row-select
+// transport defaults, rebuild any width-dependent register layout, and then
+// apply environment overrides.
+void spwm_configure_panel_type(const char *panel_type, int columns,
+                               int spwm_row_address_type);
 
 // Return the currently active panel settings after profile selection and
 // override handling.

@@ -476,9 +476,23 @@ Framebuffer::~Framebuffer() {
   }
 
   const int double_rows = rows / SUB_PANELS_;
-  if (spwm_is_panel_type(panel_type) && spwm_row_address_type == 1) {
-    row_setter_ = new SPWMBlankClockRowSelectSetter(h);
-  } else {
+  const bool is_spwm_panel = spwm_is_panel_type(panel_type);
+  if (is_spwm_panel) {
+    // For SPWM panels, --led-spwm-row-addr-type owns row transport
+    // selection. --led-row-addr-type is only used for non-SPWM panels.
+    switch (spwm_row_address_type) {
+      case SPWM_ROW_ADDRESS_TYPE_0_DIRECT_AE:
+        row_setter_ = new DirectRowAddressSetter(double_rows, h);
+        break;
+      case SPWM_ROW_ADDRESS_TYPE_1_SHIFTREG_BLANK_CLOCK:
+        row_setter_ = new SPWMBlankClockRowSelectSetter(h);
+        break;
+      default:
+        break;
+    }
+  }
+
+  if (row_setter_ == NULL) {
     switch (row_address_type) {
     case 0:
       row_setter_ = new DirectRowAddressSetter(double_rows, h);
@@ -615,9 +629,11 @@ static void InitFM6127(GPIO *io, const struct HardwareMapping &h, int columns) {
 
 /*static*/ void Framebuffer::InitializePanels(GPIO *io,
                                               const char *panel_type,
-                                              int columns) {
+                                              int columns,
+                                              int spwm_row_address_type) {
   const bool spwm_panel_handled =
-      spwm_initialize_panel_type(panel_type, columns);
+      spwm_initialize_panel_type(panel_type, columns,
+                                 spwm_row_address_type);
 
   if (!panel_type || panel_type[0] == '\0') return;
 

@@ -526,7 +526,8 @@ void RGBMatrix::Impl::SetGPIO(GPIO *io, bool start_thread) {
                           params_.row_address_type,
                           params_.spwm_row_address_type);
     Framebuffer::InitializePanels(io_, params_.panel_type,
-                                  params_.cols * params_.chain_length);
+                                  params_.cols * params_.chain_length,
+                                  params_.spwm_row_address_type);
   }
   if (start_thread) {
     StartRefresh();
