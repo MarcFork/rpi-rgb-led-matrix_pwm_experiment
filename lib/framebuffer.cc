@@ -478,6 +478,7 @@ Framebuffer::~Framebuffer() {
   const int double_rows = rows / SUB_PANELS_;
   const bool is_spwm_panel = spwm_is_panel_type(panel_type);
   if (is_spwm_panel) {
+    spwm_set_parallel_chains(parallel);
     // For SPWM panels, --led-spwm-row-addr-type owns row transport
     // selection. --led-row-addr-type is only used for non-SPWM panels.
     switch (spwm_row_address_type) {

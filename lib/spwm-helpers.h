@@ -173,6 +173,11 @@ void spwm_configure_panel_type(const char *panel_type, int columns,
 // override handling.
 const SPWM_Panel_Settings &spwm_get_panel_settings();
 
+// Track how many parallel RGB output groups the active SPWM session should
+// drive.
+int spwm_get_parallel_chains();
+void spwm_set_parallel_chains(int spwm_parallel_chains);
+
 // Resolve upload dimensions and derived driver layout from runtime framebuffer
 // values plus the active panel defaults.
 SPWM_Upload_Geometry spwm_resolve_upload_geometry(int rows, int columns,

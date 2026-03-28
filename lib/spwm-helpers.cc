@@ -239,6 +239,7 @@ SPWM_Init_Sequence spwm_get_initial_init_sequence() {
 struct SPWM_Runtime_State {
   SPWM_Runtime_State()
       : config(spwm_create_initial_config()),
+        active_parallel_chains(1),
         enabled(false),
         init_sequence(spwm_get_initial_init_sequence()),
         last_initial_oe_start_ns(0),
@@ -246,6 +247,7 @@ struct SPWM_Runtime_State {
         panel_settings(spwm_get_default_panel_profile().settings) {}
 
   SPWM_Config config;
+  int active_parallel_chains;
   bool enabled;
   SPWM_Init_Sequence init_sequence;
   uint64_t last_initial_oe_start_ns;
@@ -523,15 +525,30 @@ void spwm_apply_auto_tune_step(uint64_t spwm_target_gap_ns,
 // Register-stream emitters
 // ------------------------
 // Collect the RGB GPIO masks used when sending register blocks rather than
-// framebuffer data.
+// framebuffer data. Register payloads need to be broadcast to every active
+// parallel chain so they stay in sync.
 SPWM_Register_Output_Masks spwm_get_register_output_masks(
     const HardwareMapping &h) {
-  SPWM_Register_Output_Masks spwm_masks = {
-      h.p0_r1 | h.p0_r2 | h.p1_r1 | h.p1_r2,
-      h.p0_g1 | h.p0_g2 | h.p1_g1 | h.p1_g2,
-      h.p0_b1 | h.p0_b2 | h.p1_b1 | h.p1_b2,
-      0,
+  const int spwm_parallel_chains = spwm_get_parallel_chains();
+  const gpio_bits_t spwm_red_masks[] = {
+      h.p0_r1 | h.p0_r2, h.p1_r1 | h.p1_r2, h.p2_r1 | h.p2_r2,
+      h.p3_r1 | h.p3_r2, h.p4_r1 | h.p4_r2, h.p5_r1 | h.p5_r2,
   };
+  const gpio_bits_t spwm_green_masks[] = {
+      h.p0_g1 | h.p0_g2, h.p1_g1 | h.p1_g2, h.p2_g1 | h.p2_g2,
+      h.p3_g1 | h.p3_g2, h.p4_g1 | h.p4_g2, h.p5_g1 | h.p5_g2,
+  };
+  const gpio_bits_t spwm_blue_masks[] = {
+      h.p0_b1 | h.p0_b2, h.p1_b1 | h.p1_b2, h.p2_b1 | h.p2_b2,
+      h.p3_b1 | h.p3_b2, h.p4_b1 | h.p4_b2, h.p5_b1 | h.p5_b2,
+  };
+
+  SPWM_Register_Output_Masks spwm_masks = {0, 0, 0, 0};
+  for (int spwm_chain = 0; spwm_chain < spwm_parallel_chains; ++spwm_chain) {
+    spwm_masks.red_mask |= spwm_red_masks[spwm_chain];
+    spwm_masks.green_mask |= spwm_green_masks[spwm_chain];
+    spwm_masks.blue_mask |= spwm_blue_masks[spwm_chain];
+  }
   spwm_masks.all_mask =
       spwm_masks.red_mask | spwm_masks.green_mask | spwm_masks.blue_mask;
   return spwm_masks;
@@ -1678,11 +1695,25 @@ int spwm_get_oe_clk_length() {
   return spwm_get_panel_settings().oe_clk_length;
 }
 
-// The SPWM framebuffer path only drives the six RGB data pins directly. CLK is
-// added separately when building the full write mask used by the clock helper.
+// The SPWM framebuffer path drives the RGB data pins for every active parallel
+// chain. CLK is added separately when building the full write mask used by the
+// clock helper.
 gpio_bits_t spwm_get_framebuffer_rgb_mask(const HardwareMapping &h) {
-  return h.p0_r1 | h.p0_g1 | h.p0_b1 |
-         h.p0_r2 | h.p0_g2 | h.p0_b2;
+  const int spwm_parallel_chains = spwm_get_parallel_chains();
+  const gpio_bits_t spwm_chain_masks[] = {
+      h.p0_r1 | h.p0_g1 | h.p0_b1 | h.p0_r2 | h.p0_g2 | h.p0_b2,
+      h.p1_r1 | h.p1_g1 | h.p1_b1 | h.p1_r2 | h.p1_g2 | h.p1_b2,
+      h.p2_r1 | h.p2_g1 | h.p2_b1 | h.p2_r2 | h.p2_g2 | h.p2_b2,
+      h.p3_r1 | h.p3_g1 | h.p3_b1 | h.p3_r2 | h.p3_g2 | h.p3_b2,
+      h.p4_r1 | h.p4_g1 | h.p4_b1 | h.p4_r2 | h.p4_g2 | h.p4_b2,
+      h.p5_r1 | h.p5_g1 | h.p5_b1 | h.p5_r2 | h.p5_g2 | h.p5_b2,
+  };
+
+  gpio_bits_t spwm_rgb_mask = 0;
+  for (int spwm_chain = 0; spwm_chain < spwm_parallel_chains; ++spwm_chain) {
+    spwm_rgb_mask |= spwm_chain_masks[spwm_chain];
+  }
+  return spwm_rgb_mask;
 }
 
 // FM6373-style OE advances the row shortly before the next burst, while
@@ -1871,6 +1902,27 @@ void spwm_configure_panel_type(const char *spwm_panel_type, int spwm_columns,
 // Return the currently active SPWM panel settings.
 const SPWM_Panel_Settings &spwm_get_panel_settings() {
   return spwm_get_runtime_state().panel_settings;
+}
+
+// Return how many parallel RGB chains the active SPWM session should drive.
+int spwm_get_parallel_chains() {
+  const int spwm_parallel_chains =
+      spwm_get_runtime_state().active_parallel_chains;
+  if (spwm_parallel_chains < 1) return 1;
+  if (spwm_parallel_chains > 6) return 6;
+  return spwm_parallel_chains;
+}
+
+// Select how many parallel RGB chains the SPWM upload path should include.
+void spwm_set_parallel_chains(int spwm_parallel_chains) {
+  SPWM_Runtime_State &spwm_runtime_state = spwm_get_runtime_state();
+  if (spwm_parallel_chains < 1) {
+    spwm_runtime_state.active_parallel_chains = 1;
+  } else if (spwm_parallel_chains > 6) {
+    spwm_runtime_state.active_parallel_chains = 6;
+  } else {
+    spwm_runtime_state.active_parallel_chains = spwm_parallel_chains;
+  }
 }
 
 // Resolve the effective upload geometry from runtime framebuffer values and
