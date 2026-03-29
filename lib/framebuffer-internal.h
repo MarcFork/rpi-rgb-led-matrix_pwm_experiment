@@ -27,7 +27,16 @@ namespace rgb_matrix {
 class GPIO;
 class PinPulser;
 namespace internal {
-class RowAddressSetter;
+class RowAddressSetter {
+public:
+  virtual ~RowAddressSetter() {}
+  virtual gpio_bits_t need_bits() const = 0;
+  virtual void SetRowAddress(GPIO *io, int row) = 0;
+  // Most SPWM panels use the direct path: set the row explicitly, then run the
+  // SPWM clocks. Panels such as DP32020A/FM6363 opt into the alternate path
+  // where the blank clocks themselves encode the next row select waveform.
+  virtual bool spwm_uses_blank_clock_row_select() const { return false; }
+};
 
 // An opaque type used within the framebuffer that can be used
 // to copy between PixelMappers.
@@ -94,11 +103,14 @@ public:
   // Initialize GPIO bits for output. Only call once.
   static void InitHardwareMapping(const char *named_hardware);
   static void InitGPIO(GPIO *io, int rows, int parallel,
+                       const char *panel_type,
                        bool allow_hardware_pulsing,
                        int pwm_lsb_nanoseconds,
                        int dither_bits,
-                       int row_address_type);
-  static void InitializePanels(GPIO *io, const char *panel_type, int columns);
+                       int row_address_type,
+                       int spwm_row_address_type);
+  static void InitializePanels(GPIO *io, const char *panel_type, int columns,
+                               int spwm_row_address_type);
 
   // Set PWM bits used for output. Default is 11, but if you only deal with
   // simple comic-colors, 1 might be sufficient. Lower require less CPU.
@@ -118,6 +130,7 @@ public:
   uint8_t brightness() { return brightness_; }
 
   void DumpToMatrix(GPIO *io, int pwm_bits_to_show);
+  void DumpToMatrixSPWM(GPIO *io);
 
   void Serialize(const char **data, size_t *len) const;
   bool Deserialize(const char *data, size_t len);

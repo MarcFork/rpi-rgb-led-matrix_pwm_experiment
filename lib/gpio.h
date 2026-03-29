@@ -85,7 +85,8 @@ private:
         return;
     }
 #endif
-    for (int n = 0; n < slowdown_; n++) {
+    const int delay_count = slowdown_;
+    for (int n = 0; n < delay_count; n++) {
       *gpio_clr_bits_low_ = 0;
     }
   }

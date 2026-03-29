@@ -77,7 +77,8 @@ static bool ConsumeIntFlag(const char *flag_name,
     return false;
   option += OPTION_PREFIX_LEN;
   const size_t flag_len = strlen(flag_name);
-  if (strncmp(option, flag_name, flag_len) != 0)
+  if (strncmp(option, flag_name, flag_len) != 0 ||
+      (option[flag_len] != '\0' && option[flag_len] != '='))
     return false;  // not consumed.
   const char *value;
   if (option[flag_len] == '=')  // --option=42  # value in same arg
@@ -112,7 +113,8 @@ static bool ConsumeStringFlag(const char *flag_name,
     return false;
   option += OPTION_PREFIX_LEN;
   const size_t flag_len = strlen(flag_name);
-  if (strncmp(option, flag_name, flag_len) != 0)
+  if (strncmp(option, flag_name, flag_len) != 0 ||
+      (option[flag_len] != '\0' && option[flag_len] != '='))
     return false;  // not consumed.
   const char *value;
   if (option[flag_len] == '=')  // --option=hello  # value in same arg
@@ -182,6 +184,9 @@ static bool FlagInit(int &argc, char **&argv,
         continue;
       if (ConsumeIntFlag("row-addr-type", it, end,
                          &mopts->row_address_type, &err))
+        continue;
+      if (ConsumeIntFlag("spwm-row-addr-type", it, end,
+                         &mopts->spwm_row_address_type, &err))
         continue;
       if (ConsumeIntFlag("limit-refresh", it, end,
                          &mopts->limit_refresh_rate_hz, &err))
@@ -330,7 +335,9 @@ void PrintMatrixFlags(FILE *out, const RGBMatrix::Options &d,
           "\t--led-brightness=<percent>: Brightness in percent (Default: %d).\n"
           "\t--led-scan-mode=<0..1>    : 0 = progressive; 1 = interlaced "
           "(Default: %d).\n"
-          "\t--led-row-addr-type=<0..4>: 0 = default; 1 = AB-addressed panels; 2 = direct row select; 3 = ABC-addressed panels; 4 = ABC Shift + DE direct "
+          "\t--led-row-addr-type=<0..5>: 0 = default; 1 = AB-addressed panels; 2 = direct row select; 3 = ABC-addressed panels; 4 = ABC Shift + DE direct; 5 = shift-register row select "
+          "(Default: 0).\n"
+          "\t--led-spwm-row-addr-type=<0..1>: SPWM-only row select. 0 = direct A-E row flow; 1 = shift-register blank-clock row-select "
           "(Default: 0).\n"
           "\t--led-%sshow-refresh        : %show refresh rate.\n"
           "\t--led-limit-refresh=<Hz>  : Limit refresh rate to this frequency in Hz. Useful to keep a\n"
@@ -344,7 +351,7 @@ void PrintMatrixFlags(FILE *out, const RGBMatrix::Options &d,
           "\t--led-pwm-dither-bits=<0..2> : Time dithering of lower bits "
           "(Default: 0)\n"
           "\t--led-%shardware-pulse   : %sse hardware pin-pulse generation.\n"
-          "\t--led-panel-type=<name>   : Needed to initialize special panels. Supported: 'FM6126A', 'FM6127'\n"
+          "\t--led-panel-type=<name>   : Needed to initialize special panels. Supported: 'FM6126A', 'FM6127', 'FM6373', 'FM6363'\n"
           "\t--led-%sbusy-waiting     : %sse busy waiting when limiting refresh rate.\n",
           d.hardware_mapping,
           d.rows, d.cols, d.chain_length, d.parallel,
@@ -420,7 +427,12 @@ bool RGBMatrix::Options::Validate(std::string *err_in) const {
   }
 
   if (row_address_type < 0 || row_address_type > 5) {
-    err->append("Row address type values can be 0 (default), 1 (AB addressing), 2 (direct row select), 3 (ABC address), 4 (ABC Shift + DE direct), 5 (Test row select).\n");
+    err->append("Row address type values can be 0 (default), 1 (AB addressing), 2 (direct row select), 3 (ABC address), 4 (ABC Shift + DE direct), 5 (shift-register row select).\n");
+    success = false;
+  }
+
+  if (spwm_row_address_type < 0 || spwm_row_address_type > 1) {
+    err->append("SPWM row address type values can be 0 (direct A-E SPWM row flow) or 1 (shift-register blank-clock SPWM row-select path).\n");
     success = false;
   }
 
